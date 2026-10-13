@@ -30,12 +30,20 @@ class MainActivity : Activity() {
     private val cyan = Color.rgb(63, 220, 242)
     private val violet = Color.rgb(163, 104, 255)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        window.statusBarColor = bg
-        window.navigationBarColor = bg
-        buildUi()
-    }
+   override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    window.statusBarColor = bg
+    window.navigationBarColor = bg
+
+    // முன்பு சேமித்த station-ஐ மீண்டும் load செய்
+    val prefs = getSharedPreferences("naadhalai_radio", MODE_PRIVATE)
+    stationName = prefs.getString("station_name", "உங்கள் Radio")
+        ?: "உங்கள் Radio"
+    streamUrl = prefs.getString("stream_url", "") ?: ""
+
+    buildUi()
+}
 
     private fun buildUi() {
         val root = LinearLayout(this).apply {
@@ -105,30 +113,42 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
-    private fun togglePlayback() {
-        if (streamUrl.isBlank()) {
-            status.text = "முதலில் உங்கள் அனுமதியுள்ள stream URL சேர்க்கவும்."
-            showStreamDialog()
-            return
-        }
+   
+private fun togglePlayback() {
+    if (streamUrl.isBlank()) {
+        status.text = "முதலில் stream URL சேர்க்கவும்."
+        showStreamDialog()
+        return
+    }
+
+    try {
         val p = player ?: ExoPlayer.Builder(this).build().also { exo ->
             exo.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     status.text = when (playbackState) {
                         Player.STATE_BUFFERING -> "இணைக்கிறது…"
-                        Player.STATE_READY -> if (exo.isPlaying) "Live radio playing" else "Play செய்ய தயாராக உள்ளது"
+                        Player.STATE_READY ->
+                            if (exo.isPlaying) "Live radio playing"
+                            else "Play செய்ய தயாராக உள்ளது"
                         Player.STATE_ENDED -> "Stream முடிந்தது"
                         else -> status.text
                     }
-                    playButton.text = if (exo.isPlaying) "Ⅱ  Pause Radio" else "▶  Play Radio"
+
+                    playButton.text =
+                        if (exo.isPlaying) "Ⅱ  Pause Radio"
+                        else "▶  Play Radio"
                 }
+
                 override fun onPlayerError(error: PlaybackException) {
-                    status.text = "Stream இயங்கவில்லை. URL-ஐ சரிபார்க்கவும்."
+                    status.text =
+                        "Stream பிழை: ${error.errorCodeName}"
                     playButton.text = "▶  Play Radio"
                 }
             })
+
             player = exo
         }
+
         if (p.isPlaying) {
             p.pause()
             playButton.text = "▶  Play Radio"
@@ -140,7 +160,15 @@ class MainActivity : Activity() {
             currentName.text = stationName
             status.text = "இணைக்கிறது…"
         }
+    } catch (e: Exception) {
+        status.text = "Player பிழை: ${e.message ?: "மீண்டும் முயற்சிக்கவும்"}"
+        playButton.text = "▶  Play Radio"
+
+        player?.release()
+        player = null
     }
+}
+
 
     private fun showStreamDialog() {
         val layout = LinearLayout(this).apply {
@@ -164,17 +192,34 @@ class MainActivity : Activity() {
             .setMessage("உங்களுக்கு உரிமையுள்ள அல்லது பயன்படுத்த அனுமதிக்கப்பட்ட stream URL மட்டும் சேர்க்கவும்.")
             .setView(layout)
             .setNegativeButton("Cancel", null)
-            .setPositiveButton("Save") { _, _ ->
-                val enteredUrl = url.text.toString().trim()
-                if (enteredUrl.startsWith("https://") || enteredUrl.startsWith("http://")) {
-                    stationName = name.text.toString().trim().ifBlank { "My Radio" }
-                    streamUrl = enteredUrl
-                    currentName.text = stationName
-                    status.text = "Stream சேமிக்கப்பட்டது. Play அழுத்தவும்."
-                } else {
-                    status.text = "சரியான http:// அல்லது https:// URL சேர்க்கவும்."
-                }
-            }.show()
+           
+.setPositiveButton("Save") { _, _ ->
+    val enteredName = name.text.toString().trim()
+    val enteredUrl = url.text.toString().trim()
+
+    if (
+        (enteredUrl.startsWith("https://") ||
+         enteredUrl.startsWith("http://")) &&
+        android.util.Patterns.WEB_URL.matcher(enteredUrl).matches()
+    ) {
+        stationName = enteredName.ifBlank { "My Radio" }
+        streamUrl = enteredUrl
+
+        // Phone-ல் நிரந்தரமாகச் சேமி
+        getSharedPreferences("naadhalai_radio", MODE_PRIVATE)
+            .edit()
+            .putString("station_name", stationName)
+            .putString("stream_url", streamUrl)
+            .apply()
+
+        currentName.text = stationName
+        status.text = "சேமிக்கப்பட்டது! இப்போது Play அழுத்தவும்."
+    } else {
+        status.text = "சரியான http:// அல்லது https:// stream URL சேர்க்கவும்."
+    }
+}
+.show()
+
     }
 
     private fun label(textValue: String, size: Float, color: Int, bold: Boolean) = TextView(this).apply {
