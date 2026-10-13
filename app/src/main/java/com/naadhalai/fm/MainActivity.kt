@@ -6,6 +6,8 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -36,6 +38,8 @@ class MainActivity : Activity() {
     private lateinit var currentName: TextView
     private lateinit var status: TextView
     private lateinit var playButton: Button
+    private val songPickerCode = 501
+    private var selectedSongUri: Uri? = null
 
     private val bg = Color.rgb(9, 12, 28)
     private val panel = Color.rgb(22, 27, 49)
@@ -410,8 +414,90 @@ class MainActivity : Activity() {
         playButton.text = "▶  PLAY RADIO"
     }
 
+    private fun openPhoneSongPicker() {
+    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+        addCategory(Intent.CATEGORY_OPENABLE)
+        type = "audio/*"
+    }
+
+    @Suppress("DEPRECATION")
+    startActivityForResult(intent, songPickerCode)
+}
+
+@Suppress("DEPRECATION")
+override fun onActivityResult(
+    requestCode: Int,
+    resultCode: Int,
+    data: Intent?
+) {
+    super.onActivityResult(requestCode, resultCode, data)
+
+    if (requestCode == songPickerCode && resultCode == RESULT_OK) {
+        val uri = data?.data ?: return
+
+        try {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (_: Exception) {
+            // சில file providers நிரந்தர permission வழங்காமல் இருக்கலாம்.
+        }
+
+        selectedSongUri = uri
+
+        val station = selectedStation
+
+        if (station != null) {
+            currentName.text = station.name
+        } else {
+            currentName.text = "Phone Songs FM"
+        }
+
+        playPhoneSong(uri)
+    }
+}
+
+private fun playPhoneSong(uri: Uri) {
+    try {
+        val p = player ?: ExoPlayer.Builder(this)
+            .build()
+            .also { player = it }
+
+        p.setMediaItem(MediaItem.fromUri(uri))
+        p.prepare()
+        p.play()
+
+        currentName.text = "Phone Songs FM"
+        status.text = "உங்கள் பாடல் ஒலிக்கிறது…"
+        playButton.text = "Ⅱ  PAUSE RADIO"
+    } catch (_: Exception) {
+        status.text = "பாடலை இயக்க முடியவில்லை."
+        playButton.text = "▶  PLAY RADIO"
+    }
+}
+
     private fun togglePlayback() {
         val station = selectedStation
+        if (selectedCategory == "My Own FM") {
+    val songUri = selectedSongUri
+
+    if (songUri != null) {
+        val p = player
+
+        if (p?.isPlaying == true) {
+            p.pause()
+            status.text = "பாடல் Pause செய்யப்பட்டது."
+            playButton.text = "▶  PLAY RADIO"
+        } else {
+            playPhoneSong(songUri)
+        }
+    } else {
+        openPhoneSongPicker()
+    }
+
+    return
+        }
 
         if (station == null) {
             Toast.makeText(
