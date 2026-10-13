@@ -2,14 +2,12 @@ package com.naadhalai.fm
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
-import android.view.ViewGroup
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -23,168 +21,21 @@ import androidx.media3.exoplayer.ExoPlayer
 import org.json.JSONArray
 import org.json.JSONObject
 
-class MainActivity : Activity() {
-    private var player: ExoPlayer? = null
-    private lateinit var status: TextView
-    private lateinit var playButton: Button
-    private lateinit var currentName: TextView
-    private var streamUrl: String = ""
-    private var stationName: String = "உங்கள் Radio"
-    private val bg = Color.rgb(9, 12, 28)
-    private val panel = Color.rgb(22, 27, 49)
-    private val cyan = Color.rgb(63, 220, 242)
-    private val violet = Color.rgb(163, 104, 255)
-
-   override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-
-    window.statusBarColor = bg
-    window.navigationBarColor = bg
-
-    // முன்பு சேமித்த station-ஐ மீண்டும் load செய்
-    val prefs = getSharedPreferences("naadhalai_radio", MODE_PRIVATE)
-    stationName = prefs.getString("station_name", "உங்கள் Radio")
-        ?: "உங்கள் Radio"
-    streamUrl = prefs.getString("stream_url", "") ?: ""
-
-    buildUi()
-}
-
-    private fun buildUi() {
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(24), dp(20), dp(20))
-            setBackgroundColor(bg)
-        }
-        val scroll = ScrollView(this)
-        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val brand = TextView(this).apply {
-            text = "♫  நாதலை FM"
-            textSize = 29f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setPadding(0, dp(14), 0, dp(4))
-        }
-        content.addView(brand)
-        content.addView(label("இசை அலைகள் உங்களுக்காக", 14f, cyan, true))
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(18), dp(28), dp(18), dp(24))
-            background = rounded(panel, 24)
-        }
-        currentName = label(stationName, 22f, Color.WHITE, true)
-        currentName.gravity = Gravity.CENTER
-        card.addView(currentName)
-        status = label("உங்கள் stream URL-ஐ சேர்த்து தொடங்குங்கள்", 13f, Color.LTGRAY, false).apply {
-            gravity = Gravity.CENTER
-            setPadding(0, dp(10), 0, dp(18))
-        }
-        card.addView(status)
-        playButton = Button(this).apply {
-            text = "▶  Play Radio"
-            setTextColor(bg)
-            textSize = 16f
-            background = rounded(cyan, 40)
-            setOnClickListener { togglePlayback() }
-        }
-        card.addView(playButton, LinearLayout.LayoutParams(-1, dp(54)))
-        val add = Button(this).apply {
-            text = "＋  சொந்த Radio Stream சேர்க்க"
-            setTextColor(Color.WHITE)
-            background = rounded(violet, 14)
-            setOnClickListener { showStreamDialog() }
-        }
-        val addParams = LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(14) }
-        card.addView(add, addParams)
-        content.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(26) })
-        content.addView(label("📻  Stations", 19f, Color.WHITE, true).apply {
-            setPadding(0, dp(26), 0, dp(10))
-        })
-        val info = TextView(this).apply {
-            text = "Tamil FM stations\nஅதிகாரப்பூர்வ stream link கிடைத்ததும் இங்கே சேர்க்கலாம்."
-            textSize = 14f
-            setTextColor(Color.LTGRAY)
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-            background = rounded(panel, 16)
-        }
-        content.addView(info)
-        content.addView(label("குறிப்பு: இது ஆரம்ப native prototype. முன் நிரப்பப்பட்ட FM stream URLs இல்லை.", 12f, Color.GRAY, false).apply {
-            setPadding(dp(2), dp(16), dp(2), dp(10))
-        })
-        scroll.addView(content)
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        setContentView(root)
-    }
-
-   
-private fun togglePlayback() {
-    if (streamUrl.isBlank()) {
-        status.text = "முதலில் stream URL சேர்க்கவும்."
-        showStreamDialog()
-        return
-    }
-
-    try {
-        val p = player ?: ExoPlayer.Builder(this).build().also { exo ->
-            exo.addListener(object : Player.Listener {
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    status.text = when (playbackState) {
-                        Player.STATE_BUFFERING -> "இணைக்கிறது…"
-                        Player.STATE_READY ->
-                            if (exo.isPlaying) "Live radio playing"
-                            else "Play செய்ய தயாராக உள்ளது"
-                        Player.STATE_ENDED -> "Stream முடிந்தது"
-                        else -> status.text
-                    }
-
-                    playButton.text =
-                        if (exo.isPlaying) "Ⅱ  Pause Radio"
-                        else "▶  Play Radio"
-                }
-
-                override fun onPlayerError(error: PlaybackException) {
-                    status.text =
-                        "Stream பிழை: ${error.errorCodeName}"
-                    playButton.text = "▶  Play Radio"
-package com.naadhalai.fm
-
-import android.app.Activity
-import android.app.AlertDialog
-import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Bundle
-import android.view.Gravity
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
-import android.widget.Toast
-import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import org.json.JSONArray
-import org.json.JSONObject
+data class RadioStation(
+    val name: String,
+    val category: String,
+    val url: String
+)
 
 class MainActivity : Activity() {
 
     private var player: ExoPlayer? = null
+
     private lateinit var root: LinearLayout
     private lateinit var content: LinearLayout
+    private lateinit var currentName: TextView
     private lateinit var status: TextView
     private lateinit var playButton: Button
-    private lateinit var currentName: TextView
-
-    private val prefs by lazy {
-        getSharedPreferences("naadhalai_radio", MODE_PRIVATE)
-    }
 
     private val bg = Color.rgb(9, 12, 28)
     private val panel = Color.rgb(22, 27, 49)
@@ -193,15 +44,16 @@ class MainActivity : Activity() {
     private val white = Color.WHITE
     private val gray = Color.LTGRAY
 
-    private var currentCategory = "LIVE FM"
-    private var currentStationName = ""
-    private var currentStreamUrl = ""
-    private var musicUris = mutableListOf<String>()
-
-    private data class Station(
-        val name: String,
-        val url: String
+    private val categories = listOf(
+        "Music Directors FM",
+        "Actors FM",
+        "My Own FM"
     )
+
+    private var selectedCategory = "Music Directors FM"
+    private var selectedStation: RadioStation? = null
+
+    private val stations = mutableListOf<RadioStation>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -209,22 +61,83 @@ class MainActivity : Activity() {
         window.statusBarColor = bg
         window.navigationBarColor = bg
 
-        currentStationName = prefs.getString(
-            "station_name", "உங்கள் Radio"
-        ) ?: "உங்கள் Radio"
-
-        currentStreamUrl = prefs.getString(
-            "stream_url", ""
-        ) ?: ""
-
-        loadMusic()
-        showHome()
+        loadStations()
+        buildUi()
     }
 
-    private fun makeRoot() {
+    private fun defaultStations(): List<RadioStation> {
+        return listOf(
+            RadioStation("இளையராஜா FM", categories[0], ""),
+            RadioStation("A.R. ரஹ்மான் FM", categories[0], ""),
+            RadioStation("அனிருத் FM", categories[0], ""),
+            RadioStation("தேவா FM", categories[0], ""),
+            RadioStation("விஜய் FM", categories[1], ""),
+            RadioStation("அஜித் FM", categories[1], ""),
+            RadioStation("ரஜினி FM", categories[1], ""),
+            RadioStation("கமல் FM", categories[1], "")
+        )
+    }
+
+    private fun loadStations() {
+        val prefs = getSharedPreferences(
+            "naadhalai_radio",
+            MODE_PRIVATE
+        )
+
+        val saved = prefs.getString("stations_json", null)
+
+        if (saved == null) {
+            stations.addAll(defaultStations())
+            saveStations()
+            return
+        }
+
+        try {
+            val array = JSONArray(saved)
+
+            for (i in 0 until array.length()) {
+                val item = array.getJSONObject(i)
+
+                stations.add(
+                    RadioStation(
+                        item.optString("name"),
+                        item.optString("category"),
+                        item.optString("url")
+                    )
+                )
+            }
+        } catch (_: Exception) {
+            stations.clear()
+            stations.addAll(defaultStations())
+            saveStations()
+        }
+    }
+
+    private fun saveStations() {
+        val array = JSONArray()
+
+        stations.forEach { station ->
+            val item = JSONObject()
+
+            item.put("name", station.name)
+            item.put("category", station.category)
+            item.put("url", station.url)
+
+            array.put(item)
+        }
+
+        getSharedPreferences(
+            "naadhalai_radio",
+            MODE_PRIVATE
+        ).edit()
+            .putString("stations_json", array.toString())
+            .apply()
+    }
+
+    private fun buildUi() {
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(18))
+            setPadding(dp(18), dp(12), dp(18), dp(12))
             setBackgroundColor(bg)
         }
 
@@ -233,6 +146,243 @@ class MainActivity : Activity() {
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
+
+        val brand = TextView(this).apply {
+            text = "♫  நாதலை FM"
+            textSize = 29f
+            setTextColor(white)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, dp(12), 0, dp(4))
+        }
+
+        content.addView(brand)
+
+        val subtitle = TextView(this).apply {
+            text = "இசை அலைகள் உங்களுக்காக"
+            textSize = 16f
+            setTextColor(cyan)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, dp(22))
+        }
+
+        content.addView(subtitle)
+
+        val playerCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(16), dp(22), dp(16), dp(20))
+            background = rounded(panel, 24)
+        }
+
+        currentName = TextView(this).apply {
+            text = selectedStation?.name ?: "உங்கள் Radio"
+            textSize = 23f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(white)
+            gravity = Gravity.CENTER
+        }
+
+        playerCard.addView(currentName)
+
+        status = TextView(this).apply {
+            text = "உங்களுக்குப் பிடித்த FM-ஐத் தேர்ந்தெடுக்கவும்"
+            textSize = 14f
+            setTextColor(gray)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(10), 0, dp(16))
+        }
+
+        playerCard.addView(status)
+
+        playButton = Button(this).apply {
+            text = "▶  PLAY RADIO"
+            textSize = 15f
+            setTextColor(bg)
+            background = rounded(cyan, 32)
+
+            setOnClickListener {
+                togglePlayback()
+            }
+        }
+
+        playerCard.addView(
+            playButton,
+            LinearLayout.LayoutParams(-1, dp(54))
+        )
+
+        content.addView(
+            playerCard,
+            LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(20)
+            }
+        )
+
+        val categoryTitle = TextView(this).apply {
+            text = "📻  உங்களுடைய FM உலகம்"
+            textSize = 21f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(white)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(4), 0, dp(12))
+        }
+
+        content.addView(categoryTitle)
+
+        categories.forEach { category ->
+            val button = Button(this).apply {
+                text = when (category) {
+                    "Music Directors FM" -> "🎼  Music Directors FM"
+                    "Actors FM" -> "🎬  Actors FM"
+                    else -> "🎧  My Own FM"
+                }
+
+                textSize = 15f
+                setTextColor(white)
+
+                background = rounded(
+                    if (selectedCategory == category) violet
+                    else panel,
+                    14
+                )
+
+                setOnClickListener {
+                    selectedCategory = category
+                    buildUi()
+                }
+            }
+
+            content.addView(
+                button,
+                LinearLayout.LayoutParams(-1, dp(52)).apply {
+                    bottomMargin = dp(8)
+                }
+            )
+        }
+
+        val listTitle = TextView(this).apply {
+            text = "Stations"
+            textSize = 19f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(cyan)
+            setPadding(0, dp(18), 0, dp(8))
+        }
+
+        content.addView(listTitle)
+
+        val filtered = stations.filter {
+            it.category == selectedCategory
+        }
+
+        if (filtered.isEmpty()) {
+            val empty = TextView(this).apply {
+                text = "இங்கே இன்னும் FM சேர்க்கப்படவில்லை.\nகீழே உள்ள பொத்தானை அழுத்தவும்."
+                textSize = 15f
+                setTextColor(gray)
+                gravity = Gravity.CENTER
+                setPadding(dp(16), dp(22), dp(16), dp(22))
+                background = rounded(panel, 16)
+            }
+
+            content.addView(empty)
+        }
+
+        filtered.forEach { station ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(12), dp(10), dp(12))
+                background = rounded(panel, 14)
+            }
+
+            val info = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+            }
+
+            val name = TextView(this).apply {
+                text = "♫  ${station.name}"
+                textSize = 16f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(white)
+            }
+
+            val detail = TextView(this).apply {
+                text = if (station.url.isBlank()) {
+                    "Stream URL சேர்க்கவும்"
+                } else {
+                    "Radio stream"
+                }
+
+                textSize = 12f
+                setTextColor(gray)
+                setPadding(0, dp(5), 0, 0)
+            }
+
+            info.addView(name)
+            info.addView(detail)
+
+            row.addView(
+                info,
+                LinearLayout.LayoutParams(0, -2, 1f)
+            )
+
+            val play = Button(this).apply {
+                text = "▶"
+                textSize = 17f
+                setTextColor(bg)
+                background = rounded(cyan, 12)
+
+                setOnClickListener {
+                    selectStation(station)
+                }
+            }
+
+            row.addView(
+                play,
+                LinearLayout.LayoutParams(dp(58), dp(46))
+            )
+
+            row.setOnClickListener {
+                selectStation(station)
+            }
+
+            content.addView(
+                row,
+                LinearLayout.LayoutParams(-1, -2).apply {
+                    bottomMargin = dp(9)
+                }
+            )
+        }
+
+        val addButton = Button(this).apply {
+            text = "＋  இந்தப் பிரிவில் புதிய FM சேர்க்க"
+            textSize = 14f
+            setTextColor(white)
+            background = rounded(violet, 14)
+
+            setOnClickListener {
+                showAddDialog()
+            }
+        }
+
+        content.addView(
+            addButton,
+            LinearLayout.LayoutParams(-1, dp(54)).apply {
+                topMargin = dp(14)
+                bottomMargin = dp(14)
+            }
+        )
+
+        val footer = TextView(this).apply {
+            text = "நாதலை FM • இசை அலைகள் உங்களுக்காக"
+            textSize = 12f
+            setTextColor(Color.GRAY)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(10), 0, dp(16))
+        }
+
+        content.addView(footer)
 
         scroll.addView(content)
 
@@ -244,702 +394,248 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
-    private fun showHome() {
-        makeRoot()
+    private fun selectStation(station: RadioStation) {
+        selectedStation = station
 
-        content.addView(
-            label("♫  நாதலை FM", 30f, white, true)
-        )
+        currentName.text = station.name
 
-        content.addView(
-            label(
-                "இசை அலைகள் உங்களுக்காக",
-                15f,
-                cyan,
-                true
-            )
-        )
-
-        content.addView(
-            label(
-                "உனக்குப் பிடித்த இசை உலகம் 🎧",
-                16f,
-                gray,
-                false
-            ).apply {
-                setPadding(0, dp(20), 0, dp(12))
-            }
-        )
-
-        addCategory(
-            "📻",
-            "LIVE FM",
-            "இணைய வானொலி சேனல்கள்"
-        ) {
-            currentCategory = "LIVE FM"
-            showStations(currentCategory)
+        if (station.url.isBlank()) {
+            status.text = "இந்த FM-க்கான stream URL சேர்க்கவும்."
+            showEditDialog(station)
+            return
         }
 
-        addCategory(
-            "🎼",
-            "Music Directors FM",
-            "இளையராஜா • ரஹ்மான் • யுவன் • அனிருத்"
-        ) {
-            currentCategory = "Music Directors FM"
-            showStations(currentCategory)
-        }
-
-        addCategory(
-            "🌟",
-            "Actors FM",
-            "விஜய் • அஜித் • ரஜினி • சூர்யா"
-        ) {
-            currentCategory = "Actors FM"
-            showStations(currentCategory)
-        }
-
-        addCategory(
-            "🎧",
-            "MY MUSIC",
-            "உன் போனில் உள்ள பாடல்களைத் தேர்ந்தெடு"
-        ) {
-            showMyMusic()
-        }
-
-        addCategory(
-            "❤️",
-            "FAVORITES",
-            "உனக்குப் பிடித்த சேனல்கள்"
-        ) {
-            showFavorites()
-        }
-
-        val now = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(16), dp(18), dp(16), dp(18))
-            background = rounded(panel, 20)
-        }
-
-        now.addView(
-            label("🎵 இப்போது தேர்ந்தெடுத்தது", 15f, cyan, true)
-        )
-
-        now.addView(
-            label(
-                currentStationName,
-                20f,
-                white,
-                true
-            ).apply {
-                setPadding(0, dp(8), 0, dp(8))
-            }
-        )
-
-        now.addView(
-            label(
-                if (player?.isPlaying == true)
-                    "இசை ஒலிக்கிறது"
-                else
-                    "வானொலி கேட்கத் தயாராக உள்ளது",
-                13f,
-                gray,
-                false
-            )
-        )
-
-        content.addView(
-            now,
-            LinearLayout.LayoutParams(-1, -2).apply {
-                topMargin = dp(16)
-            }
-        )
-
-        content.addView(
-            label(
-                "குறிப்பு: Radio ஒலிக்க, பயன்படுத்த அனுமதிக்கப்பட்ட stream URL தேவை.",
-                12f,
-                gray,
-                false
-            ).apply {
-                setPadding(0, dp(18), 0, dp(10))
-            }
-        )
+        stopPlayback()
+        status.text = "தொடங்கத் தயாராக உள்ளது."
+        playButton.text = "▶  PLAY RADIO"
     }
 
-    private fun addCategory(
-        emoji: String,
-        title: String,
-        subtitle: String,
-        action: () -> Unit
-    ) {
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(18))
-            background = rounded(panel, 18)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { action() }
+    private fun togglePlayback() {
+        val station = selectedStation
+
+        if (station == null) {
+            Toast.makeText(
+                this,
+                "முதலில் ஒரு FM station தேர்ந்தெடுக்கவும்.",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
         }
 
-        card.addView(
-            label("$emoji  $title", 20f, white, true)
-        )
-
-        card.addView(
-            label(subtitle, 13f, gray, false).apply {
-                setPadding(0, dp(8), 0, 0)
-            }
-        )
-
-        content.addView(
-            card,
-            LinearLayout.LayoutParams(-1, -2).apply {
-                topMargin = dp(10)
-            }
-        )
-    }
-
-    private fun showStations(category: String) {
-        makeRoot()
-
-        addBackButton()
-
-        content.addView(
-            label(category, 25f, white, true).apply {
-                setPadding(0, dp(12), 0, dp(12))
-            }
-        )
-
-        val names = when (category) {
-            "Music Directors FM" -> listOf(
-                "இளையராஜா FM",
-                "A.R. ரஹ்மான் FM",
-                "யுவன் FM",
-                "அனிருத் FM"
-            )
-
-            "Actors FM" -> listOf(
-                "விஜய் FM",
-                "அஜித் FM",
-                "ரஜினி FM",
-                "சூர்யா FM"
-            )
-
-            else -> emptyList()
+        if (station.url.isBlank()) {
+            showEditDialog(station)
+            return
         }
 
-        val stations = loadStations(category).toMutableList()
+        try {
+            val p = player ?: ExoPlayer.Builder(this)
+                .build()
+                .also { exo ->
 
-        names.forEach { name ->
-            if (stations.none { it.name == name }) {
-                stations.add(Station(name, ""))
-            }
-        }
+                    exo.addListener(object : Player.Listener {
 
-        if (stations.isEmpty()) {
-            content.addView(
-                label(
-                    "இன்னும் Radio சேர்க்கப்படவில்லை.",
-                    15f,
-                    gray,
-                    false
-                )
-            )
-        }
+                        override fun onPlaybackStateChanged(
+                            playbackState: Int
+                        ) {
+                            status.text = when (playbackState) {
+                                Player.STATE_BUFFERING ->
+                                    "Radio இணைக்கிறது…"
 
-        stations.forEach { station ->
-            val card = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(16), dp(14), dp(16), dp(14))
-                background = rounded(panel, 16)
-            }
+                                Player.STATE_READY ->
+                                    if (exo.isPlaying) {
+                                        "Live radio playing"
+                                    } else {
+                                        "Play செய்யத் தயாராக உள்ளது"
+                                    }
 
-            card.addView(
-                label(station.name, 18f, white, true)
-            )
+                                Player.STATE_ENDED ->
+                                    "Stream முடிந்தது."
 
-            if (station.url.isBlank()) {
-                card.addView(
-                    label(
-                        "உன் அனுமதியுள்ள stream URL-ஐச் சேர்.",
-                        13f,
-                        gray,
-                        false
-                    ).apply {
-                        setPadding(0, dp(6), 0, 0)
-                    }
-                )
+                                else -> status.text
+                            }
 
-                card.addView(
-                    makeButton("＋ Stream சேர்க்க", violet) {
-                        showAddStationDialog(category, station.name)
-                    },
-                    LinearLayout.LayoutParams(-1, dp(48)).apply {
-                        topMargin = dp(10)
-                    }
-                )
+                            playButton.text =
+                                if (exo.isPlaying) {
+                                    "Ⅱ  PAUSE RADIO"
+                                } else {
+                                    "▶  PLAY RADIO"
+                                }
+                        }
+
+                        override fun onPlayerError(
+                            error: PlaybackException
+                        ) {
+                            status.text =
+                                "Stream பிழை: ${error.errorCodeName}"
+
+                            playButton.text = "▶  PLAY RADIO"
+                        }
+                    })
+
+                    player = exo
+                }
+
+            if (p.isPlaying) {
+                p.pause()
+                status.text = "Radio நிறுத்தப்பட்டுள்ளது."
+                playButton.text = "▶  PLAY RADIO"
             } else {
-                val row = LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                }
-
-                row.addView(
-                    makeButton("▶ PLAY", cyan) {
-                        playStation(station)
-                    },
-                    LinearLayout.LayoutParams(0, dp(48), 1f)
+                p.setMediaItem(
+                    MediaItem.fromUri(station.url)
                 )
+                p.prepare()
+                p.play()
 
-                row.addView(
-                    makeButton("❤️", violet) {
-                        saveFavorite(station, category)
-                    },
-                    LinearLayout.LayoutParams(0, dp(48), 1f).apply {
-                        leftMargin = dp(8)
-                    }
-                )
-
-                card.addView(
-                    row,
-                    LinearLayout.LayoutParams(-1, -2).apply {
-                        topMargin = dp(10)
-                    }
-                )
-
-                card.addView(
-                    makeButton("✎ URL மாற்று", panel) {
-                        showAddStationDialog(category, station.name)
-                    },
-                    LinearLayout.LayoutParams(-1, dp(44)).apply {
-                        topMargin = dp(8)
-                    }
-                )
+                currentName.text = station.name
+                status.text = "Radio இணைக்கிறது…"
+                playButton.text = "Ⅱ  PAUSE RADIO"
             }
 
-            content.addView(
-                card,
-                LinearLayout.LayoutParams(-1, -2).apply {
-                    topMargin = dp(10)
-                }
-            )
+        } catch (e: Exception) {
+            status.text = "Radio தொடங்க முடியவில்லை."
+            playButton.text = "▶  PLAY RADIO"
         }
-
-        content.addView(
-            makeButton("＋ புதிய Radio சேர்க்க", violet) {
-                showAddStationDialog(category, "")
-            },
-            LinearLayout.LayoutParams(-1, dp(52)).apply {
-                topMargin = dp(18)
-            }
-        )
     }
 
-    private fun showAddStationDialog(
-        category: String,
-        existingName: String
-    ) {
-        val old = loadStations(category)
-            .find { it.name == existingName }
+    private fun stopPlayback() {
+        player?.stop()
+        player?.clearMediaItems()
+        playButton.text = "▶  PLAY RADIO"
+    }
+
+    private fun showAddDialog() {
+        val nameInput = EditText(this).apply {
+            hint = "FM பெயர்"
+            setSingleLine(true)
+        }
+
+        val urlInput = EditText(this).apply {
+            hint = "https://உங்கள்-stream-url"
+            setSingleLine(true)
+        }
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(8), dp(20), 0)
+            addView(nameInput)
+            addView(urlInput)
         }
-
-        val name = EditText(this).apply {
-            hint = "Radio பெயர்"
-            setSingleLine(true)
-            setText(existingName)
-        }
-
-        val url = EditText(this).apply {
-            hint = "https://உங்கள்-stream-url"
-            setSingleLine(true)
-            setText(old?.url ?: "")
-        }
-
-        layout.addView(name)
-        layout.addView(url)
 
         AlertDialog.Builder(this)
-            .setTitle("Radio Stream சேர்க்க")
+            .setTitle("புதிய FM சேர்க்க")
             .setMessage(
-                "உரிமையுள்ள அல்லது பயன்படுத்த அனுமதிக்கப்பட்ட stream URL மட்டும் சேர்க்கவும்."
+                "பயன்படுத்த அனுமதிக்கப்பட்ட stream URL மட்டும் சேர்க்கவும்."
             )
             .setView(layout)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Save") { _, _ ->
-                val stationName = name.text.toString().trim()
-                val stream = url.text.toString().trim()
+            .setNegativeButton("ரத்து", null)
+            .setPositiveButton("சேமி") { _, _ ->
 
-                if (stationName.isBlank()) {
-                    toast("Radio பெயரை உள்ளிடு.")
+                val name = nameInput.text.toString().trim()
+                val url = urlInput.text.toString().trim()
+
+                if (name.isBlank()) {
+                    toast("FM பெயரை உள்ளிடவும்.")
                     return@setPositiveButton
                 }
 
-                if (
-                    !(stream.startsWith("https://") ||
-                      stream.startsWith("http://"))
-                ) {
-                    toast("சரியான stream URL சேர்க்கவும்.")
+                if (!isValidUrl(url)) {
+                    toast("சரியான http:// அல்லது https:// URL சேர்க்கவும்.")
                     return@setPositiveButton
                 }
 
-                val list = loadStations(category).toMutableList()
+                val station = RadioStation(
+                    name,
+                    selectedCategory,
+                    url
+                )
 
-                list.removeAll { it.name == stationName }
+                stations.add(station)
+                saveStations()
 
-                list.add(Station(stationName, stream))
+                selectedStation = station
+                buildUi()
 
-                saveStations(category, list)
+                currentName.text = station.name
+                status.text = "FM சேமிக்கப்பட்டது! Play அழுத்தவும்."
 
-                currentCategory = category
-                toast("Radio சேமிக்கப்பட்டது!")
-
-                showStations(category)
+                toast("புதிய FM சேமிக்கப்பட்டது!")
             }
             .show()
     }
 
-    private fun playStation(station: Station) {
-        if (station.url.isBlank()) {
-            toast("முதலில் stream URL சேர்க்கவும்.")
-            return
+    private fun showEditDialog(station: RadioStation) {
+        val urlInput = EditText(this).apply {
+            hint = "https://உங்கள்-stream-url"
+            setSingleLine(true)
+            setText(station.url)
         }
 
-        try {
-            val p = player ?: ExoPlayer.Builder(this).build().also { exo ->
-                exo.addListener(object : Player.Listener {
-                    override fun onPlaybackStateChanged(state: Int) {
-                        if (state == Player.STATE_READY) {
-                            toast("Radio தயார்!")
-                        }
-                    }
-
-                    override fun onPlayerError(error: PlaybackException) {
-                        toast("Stream பிழை: ${error.errorCodeName}")
-                    }
-                })
-
-                player = exo
-            }
-
-            currentStationName = station.name
-            currentStreamUrl = station.url
-
-            prefs.edit()
-                .putString("station_name", station.name)
-                .putString("stream_url", station.url)
-                .apply()
-
-            p.setMediaItem(MediaItem.fromUri(station.url))
-            p.prepare()
-            p.play()
-
-            showHome()
-            toast("${station.name} இணைக்கப்படுகிறது…")
-
-        } catch (e: Exception) {
-            toast("Player பிழை: ${e.message}")
-        }
-    }
-
-    private fun saveFavorite(station: Station, category: String) {
-        val key = "favorites"
-        val arr = JSONArray(prefs.getString(key, "[]") ?: "[]")
-
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-
-            if (obj.optString("url") == station.url) {
-                toast("ஏற்கெனவே Favorites-ல் உள்ளது.")
-                return
-            }
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+            addView(urlInput)
         }
 
-        arr.put(
-            JSONObject().apply {
-                put("name", station.name)
-                put("url", station.url)
-                put("category", category)
-            }
-        )
-
-        prefs.edit().putString(key, arr.toString()).apply()
-        toast("❤️ Favorites-ல் சேமிக்கப்பட்டது!")
-    }
-
-    private fun showFavorites() {
-        makeRoot()
-        addBackButton()
-
-        content.addView(
-            label("❤️ FAVORITES", 24f, white, true)
-        )
-
-        val arr = JSONArray(prefs.getString("favorites", "[]") ?: "[]")
-
-        if (arr.length() == 0) {
-            content.addView(
-                label(
-                    "இன்னும் Favorites சேர்க்கவில்லை.",
-                    15f,
-                    gray,
-                    false
-                )
+        AlertDialog.Builder(this)
+            .setTitle("${station.name} அமைப்பு")
+            .setMessage(
+                "இந்த station-க்கான அனுமதிக்கப்பட்ட audio stream URL சேர்க்கவும்."
             )
-        }
+            .setView(layout)
+            .setNegativeButton("ரத்து", null)
+            .setPositiveButton("சேமி") { _, _ ->
 
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
+                val url = urlInput.text.toString().trim()
 
-            val name = obj.optString("name")
-            val url = obj.optString("url")
-
-            content.addView(
-                makeButton("▶  $name", cyan) {
-                    playStation(Station(name, url))
-                },
-                LinearLayout.LayoutParams(-1, dp(54)).apply {
-                    topMargin = dp(10)
-                }
-            )
-        }
-    }
-
-    private fun showMyMusic() {
-        makeRoot()
-        addBackButton()
-
-        content.addView(
-            label("🎧 MY MUSIC", 25f, white, true)
-        )
-
-        content.addView(
-            label(
-                "உன் போனிலிருந்து audio files தேர்ந்தெடு.",
-                14f,
-                gray,
-                false
-            ).apply {
-                setPadding(0, dp(12), 0, dp(12))
-            }
-        )
-
-        content.addView(
-            makeButton("＋ பாடல்களைத் தேர்ந்தெடு", violet) {
-                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                    type = "audio/*"
-                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                if (!isValidUrl(url)) {
+                    toast("சரியான stream URL சேர்க்கவும்.")
+                    return@setPositiveButton
                 }
 
-                @Suppress("DEPRECATION")
-                startActivityForResult(intent, 1001)
-            },
-            LinearLayout.LayoutParams(-1, dp(54))
-        )
+                val index = stations.indexOf(station)
 
-        musicUris.forEachIndexed { index, uriString ->
-            val uri = Uri.parse(uriString)
-
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(6), 0, dp(6))
-            }
-
-            row.addView(
-                makeButton("▶  பாடல் ${index + 1}", cyan) {
-                    playMusic(uri)
-                },
-                LinearLayout.LayoutParams(0, dp(48), 1f)
-            )
-
-            row.addView(
-                makeButton("✕", violet) {
-                    musicUris.remove(uriString)
-                    saveMusic()
-                    showMyMusic()
-                },
-                LinearLayout.LayoutParams(dp(60), dp(48)).apply {
-                    leftMargin = dp(8)
+                if (index >= 0) {
+                    stations[index] = station.copy(url = url)
                 }
-            )
 
-            content.addView(
-                row,
-                LinearLayout.LayoutParams(-1, -2)
-            )
-        }
-    }
+                selectedStation = station.copy(url = url)
 
-    private fun playMusic(uri: Uri) {
-        try {
-            val p = player ?: ExoPlayer.Builder(this).build().also {
-                player = it
+                saveStations()
+                buildUi()
+
+                currentName.text = station.name
+                status.text = "Stream URL சேமிக்கப்பட்டது."
+
+                toast("சேமிக்கப்பட்டது! Play அழுத்தவும்.")
             }
-
-            currentStationName = "MY MUSIC"
-            p.setMediaItem(MediaItem.fromUri(uri))
-            p.prepare()
-            p.play()
-
-            toast("பாடல் இயக்கப்படுகிறது!")
-        } catch (e: Exception) {
-            toast("பாடலை இயக்க முடியவில்லை.")
-        }
+            .show()
     }
 
-    @Deprecated("Using Android document picker result")
-    override fun onActivityResult(
-        requestCode: Int,
-        resultCode: Int,
-        data: Intent?
-    ) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode != 1001 || resultCode != RESULT_OK || data == null) {
-            return
+    private fun isValidUrl(url: String): Boolean {
+        if (
+            !url.startsWith("https://") &&
+            !url.startsWith("http://")
+        ) {
+            return false
         }
 
-        try {
-            val clip = data.clipData
-
-            if (clip != null) {
-                for (i in 0 until clip.itemCount) {
-                    addMusicUri(clip.getItemAt(i).uri)
-                }
-            } else {
-                data.data?.let { addMusicUri(it) }
-            }
-
-            saveMusic()
-            showMyMusic()
-            toast("பாடல்கள் சேர்க்கப்பட்டன!")
-
-        } catch (e: Exception) {
-            toast("பாடல்களைச் சேர்க்க முடியவில்லை.")
-        }
+        return android.util.Patterns.WEB_URL
+            .matcher(url)
+            .matches()
     }
 
-    private fun addMusicUri(uri: Uri) {
-        try {
-            contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        } catch (_: Exception) {
-        }
-
-        if (!musicUris.contains(uri.toString())) {
-            musicUris.add(uri.toString())
-        }
+    private fun toast(message: String) {
+        Toast.makeText(
+            this,
+            message,
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
-    private fun loadMusic() {
-        val arr = JSONArray(prefs.getString("music_list", "[]") ?: "[]")
-
-        musicUris.clear()
-
-        for (i in 0 until arr.length()) {
-            musicUris.add(arr.optString(i))
-        }
-    }
-
-    private fun saveMusic() {
-        val arr = JSONArray()
-
-        musicUris.forEach { arr.put(it) }
-
-        prefs.edit().putString("music_list", arr.toString()).apply()
-    }
-
-    private fun loadStations(category: String): List<Station> {
-        val arr = JSONArray(
-            prefs.getString("stations_$category", "[]") ?: "[]"
-        )
-
-        val list = mutableListOf<Station>()
-
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-
-            list.add(
-                Station(
-                    obj.optString("name"),
-                    obj.optString("url")
-                )
-            )
-        }
-
-        return list
-    }
-
-    private fun saveStations(
-        category: String,
-        stations: List<Station>
-    ) {
-        val arr = JSONArray()
-
-        stations.forEach { station ->
-            arr.put(
-                JSONObject().apply {
-                    put("name", station.name)
-                    put("url", station.url)
-                }
-            )
-        }
-
-        prefs.edit()
-            .putString("stations_$category", arr.toString())
-            .apply()
-    }
-
-    private fun addBackButton() {
-        content.addView(
-            makeButton("←  முகப்புக்குச் செல்", panel) {
-                showHome()
-            },
-            LinearLayout.LayoutParams(-1, dp(48))
-        )
-    }
-
-    private fun makeButton(
-        title: String,
+    private fun rounded(
         color: Int,
-        action: () -> Unit
-    ): Button {
-        return Button(this).apply {
-            text = title
-            textSize = 14f
-            setTextColor(if (color == cyan) bg else white)
-            background = rounded(color, 14)
-            setOnClickListener { action() }
-        }
-    }
-
-    private fun label(
-        value: String,
-        size: Float,
-        color: Int,
-        bold: Boolean
-    ): TextView {
-        return TextView(this).apply {
-            text = value
-            textSize = size
-            setTextColor(color)
-
-            if (bold) {
-                typeface = Typeface.DEFAULT_BOLD
-            }
-
-            gravity = Gravity.CENTER
-        }
-    }
-
-    private fun rounded(color: Int, radius: Int): GradientDrawable {
+        radius: Int
+    ): GradientDrawable {
         return GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radius).toFloat()
@@ -947,11 +643,9 @@ class MainActivity : Activity() {
     }
 
     private fun dp(value: Int): Int {
-        return (value * resources.displayMetrics.density).toInt()
-    }
-
-    private fun toast(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        return (
+            value * resources.displayMetrics.density
+        ).toInt()
     }
 
     override fun onDestroy() {
