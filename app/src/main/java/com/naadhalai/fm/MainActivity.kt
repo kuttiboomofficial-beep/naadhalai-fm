@@ -1,6 +1,6 @@
 package com.naadhalai.fm
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
@@ -29,7 +29,7 @@ data class RadioStation(
     val url: String
 )
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
 
     private var player: ExoPlayer? = null
 
