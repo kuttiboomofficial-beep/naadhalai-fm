@@ -51,12 +51,14 @@ class MainActivity : ComponentActivity() {
     private val violet = Color.rgb(163, 104, 255)
 
     private val musicCategories = listOf(
-        "❤️ Love Songs",
-        "💔 Sad Songs",
-        "🔥 Kuthu Songs",
-        "🙏 Devotional Songs",
-        "🕰️ Old Songs"
-    )
+    "💜 உன் உணர்வின் இசை",
+    "📻 FM Stations",
+    "🎼 Music Directors",
+    "🎬 Actors",
+    "🎙️ My Own FM",
+    "🙏 Devotional Songs",
+    "📅 Year Wise Songs"
+)
 
     private val radioCategories = listOf(
         "Music Directors FM",
