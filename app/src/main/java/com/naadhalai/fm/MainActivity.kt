@@ -2,20 +2,20 @@ package com.naadhalai.fm
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.os.Bundle
-import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.view.Gravity
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -38,15 +38,11 @@ class MainActivity : Activity() {
     private lateinit var currentName: TextView
     private lateinit var status: TextView
     private lateinit var playButton: Button
-    private val songPickerCode = 501
-    private var selectedSongUri: Uri? = null
 
     private val bg = Color.rgb(9, 12, 28)
     private val panel = Color.rgb(22, 27, 49)
     private val cyan = Color.rgb(63, 220, 242)
     private val violet = Color.rgb(163, 104, 255)
-    private val white = Color.WHITE
-    private val gray = Color.LTGRAY
 
     private val categories = listOf(
         "Music Directors FM",
@@ -56,8 +52,45 @@ class MainActivity : Activity() {
 
     private var selectedCategory = "Music Directors FM"
     private var selectedStation: RadioStation? = null
-
+    private var currentSongUri: Uri? = null
     private val stations = mutableListOf<RadioStation>()
+
+    private val songPicker =
+        registerForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri: Uri? ->
+
+            if (uri != null) {
+                try {
+                    contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+
+                    currentSongUri = uri
+                    selectedStation = null
+
+                    val songName = getSongName(uri)
+
+                    stopCurrentPlayback()
+
+                    currentName.text = songName
+                    status.text = "பாடல் தயாராக உள்ளது."
+
+                    val p = getPlayer()
+
+                    p.setMediaItem(MediaItem.fromUri(uri))
+                    p.prepare()
+                    p.play()
+
+                    playButton.text = "Ⅱ  PAUSE SONG"
+
+                } catch (e: Exception) {
+                    status.text = "பாடலைத் திறக்க முடியவில்லை."
+                    toast("மீண்டும் ஒரு பாடலைத் தேர்ந்தெடுக்கவும்.")
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -154,7 +187,7 @@ class MainActivity : Activity() {
         val brand = TextView(this).apply {
             text = "♫  நாதலை FM"
             textSize = 29f
-            setTextColor(white)
+            setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setPadding(0, dp(12), 0, dp(4))
@@ -184,16 +217,16 @@ class MainActivity : Activity() {
             text = selectedStation?.name ?: "உங்கள் Radio"
             textSize = 23f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(white)
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
         }
 
         playerCard.addView(currentName)
 
         status = TextView(this).apply {
-            text = "உங்களுக்குப் பிடித்த FM-ஐத் தேர்ந்தெடுக்கவும்"
+            text = "FM தேர்ந்தெடுக்கவும் அல்லது Phone Songs அழுத்தவும்."
             textSize = 14f
-            setTextColor(gray)
+            setTextColor(Color.LTGRAY)
             gravity = Gravity.CENTER
             setPadding(0, dp(10), 0, dp(16))
         }
@@ -219,7 +252,25 @@ class MainActivity : Activity() {
         content.addView(
             playerCard,
             LinearLayout.LayoutParams(-1, -2).apply {
-                bottomMargin = dp(20)
+                bottomMargin = dp(16)
+            }
+        )
+
+        val phoneSongsButton = Button(this).apply {
+            text = "📱  PHONE SONGS"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            background = rounded(violet, 14)
+
+            setOnClickListener {
+                songPicker.launch(arrayOf("audio/*"))
+            }
+        }
+
+        content.addView(
+            phoneSongsButton,
+            LinearLayout.LayoutParams(-1, dp(54)).apply {
+                bottomMargin = dp(18)
             }
         )
 
@@ -227,7 +278,7 @@ class MainActivity : Activity() {
             text = "📻  உங்களுடைய FM உலகம்"
             textSize = 21f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(white)
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             setPadding(0, dp(4), 0, dp(12))
         }
@@ -237,13 +288,18 @@ class MainActivity : Activity() {
         categories.forEach { category ->
             val button = Button(this).apply {
                 text = when (category) {
-                    "Music Directors FM" -> "🎼  Music Directors FM"
-                    "Actors FM" -> "🎬  Actors FM"
-                    else -> "🎧  My Own FM"
+                    "Music Directors FM" ->
+                        "🎼  MUSIC DIRECTORS FM"
+
+                    "Actors FM" ->
+                        "🎬  ACTORS FM"
+
+                    else ->
+                        "🎧  MY OWN FM"
                 }
 
                 textSize = 15f
-                setTextColor(white)
+                setTextColor(Color.WHITE)
 
                 background = rounded(
                     if (selectedCategory == category) violet
@@ -281,9 +337,9 @@ class MainActivity : Activity() {
 
         if (filtered.isEmpty()) {
             val empty = TextView(this).apply {
-                text = "இங்கே இன்னும் FM சேர்க்கப்படவில்லை.\nகீழே உள்ள பொத்தானை அழுத்தவும்."
+                text = "இங்கே இன்னும் FM சேர்க்கப்படவில்லை."
                 textSize = 15f
-                setTextColor(gray)
+                setTextColor(Color.LTGRAY)
                 gravity = Gravity.CENTER
                 setPadding(dp(16), dp(22), dp(16), dp(22))
                 background = rounded(panel, 16)
@@ -308,7 +364,7 @@ class MainActivity : Activity() {
                 text = "♫  ${station.name}"
                 textSize = 16f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(white)
+                setTextColor(Color.WHITE)
             }
 
             val detail = TextView(this).apply {
@@ -319,7 +375,7 @@ class MainActivity : Activity() {
                 }
 
                 textSize = 12f
-                setTextColor(gray)
+                setTextColor(Color.LTGRAY)
                 setPadding(0, dp(5), 0, 0)
             }
 
@@ -362,7 +418,7 @@ class MainActivity : Activity() {
         val addButton = Button(this).apply {
             text = "＋  இந்தப் பிரிவில் புதிய FM சேர்க்க"
             textSize = 14f
-            setTextColor(white)
+            setTextColor(Color.WHITE)
             background = rounded(violet, 14)
 
             setOnClickListener {
@@ -400,7 +456,7 @@ class MainActivity : Activity() {
 
     private fun selectStation(station: RadioStation) {
         selectedStation = station
-
+        currentSongUri = null
         currentName.text = station.name
 
         if (station.url.isBlank()) {
@@ -409,102 +465,23 @@ class MainActivity : Activity() {
             return
         }
 
-        stopPlayback()
+        stopCurrentPlayback()
         status.text = "தொடங்கத் தயாராக உள்ளது."
         playButton.text = "▶  PLAY RADIO"
     }
 
-    private fun openPhoneSongPicker() {
-    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-        addCategory(Intent.CATEGORY_OPENABLE)
-        type = "audio/*"
-    }
-
-    @Suppress("DEPRECATION")
-    startActivityForResult(intent, songPickerCode)
-}
-
-@Suppress("DEPRECATION")
-override fun onActivityResult(
-    requestCode: Int,
-    resultCode: Int,
-    data: Intent?
-) {
-    super.onActivityResult(requestCode, resultCode, data)
-
-    if (requestCode == songPickerCode && resultCode == RESULT_OK) {
-        val uri = data?.data ?: return
-
-        try {
-            contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        } catch (_: Exception) {
-            // சில file providers நிரந்தர permission வழங்காமல் இருக்கலாம்.
-        }
-
-        selectedSongUri = uri
-
-        val station = selectedStation
-
-        if (station != null) {
-            currentName.text = station.name
-        } else {
-            currentName.text = "Phone Songs FM"
-        }
-
-        playPhoneSong(uri)
-    }
-}
-
-private fun playPhoneSong(uri: Uri) {
-    try {
-        val p = player ?: ExoPlayer.Builder(this)
-            .build()
-            .also { player = it }
-
-        p.setMediaItem(MediaItem.fromUri(uri))
-        p.prepare()
-        p.play()
-
-        currentName.text = "Phone Songs FM"
-        status.text = "உங்கள் பாடல் ஒலிக்கிறது…"
-        playButton.text = "Ⅱ  PAUSE RADIO"
-    } catch (_: Exception) {
-        status.text = "பாடலை இயக்க முடியவில்லை."
-        playButton.text = "▶  PLAY RADIO"
-    }
-}
-
     private fun togglePlayback() {
         val station = selectedStation
-        if (selectedCategory == "My Own FM") {
-    val songUri = selectedSongUri
+        val songUri = currentSongUri
 
-    if (songUri != null) {
-        val p = player
-
-        if (p?.isPlaying == true) {
-            p.pause()
-            status.text = "பாடல் Pause செய்யப்பட்டது."
-            playButton.text = "▶  PLAY RADIO"
-        } else {
-            playPhoneSong(songUri)
-        }
-    } else {
-        openPhoneSongPicker()
-    }
-
-    return
+        if (songUri != null) {
+            toggleSongPlayback(songUri)
+            return
         }
 
         if (station == null) {
-            Toast.makeText(
-                this,
-                "முதலில் ஒரு FM station தேர்ந்தெடுக்கவும்.",
-                Toast.LENGTH_SHORT
-            ).show()
+            status.text = "முதலில் ஒரு FM தேர்ந்தெடுக்கவும்."
+            toast("FM station தேர்ந்தெடுக்கவும் அல்லது Phone Songs அழுத்தவும்.")
             return
         }
 
@@ -514,61 +491,14 @@ private fun playPhoneSong(uri: Uri) {
         }
 
         try {
-            val p = player ?: ExoPlayer.Builder(this)
-                .build()
-                .also { exo ->
-
-                    exo.addListener(object : Player.Listener {
-
-                        override fun onPlaybackStateChanged(
-                            playbackState: Int
-                        ) {
-                            status.text = when (playbackState) {
-                                Player.STATE_BUFFERING ->
-                                    "Radio இணைக்கிறது…"
-
-                                Player.STATE_READY ->
-                                    if (exo.isPlaying) {
-                                        "Live radio playing"
-                                    } else {
-                                        "Play செய்யத் தயாராக உள்ளது"
-                                    }
-
-                                Player.STATE_ENDED ->
-                                    "Stream முடிந்தது."
-
-                                else -> status.text
-                            }
-
-                            playButton.text =
-                                if (exo.isPlaying) {
-                                    "Ⅱ  PAUSE RADIO"
-                                } else {
-                                    "▶  PLAY RADIO"
-                                }
-                        }
-
-                        override fun onPlayerError(
-                            error: PlaybackException
-                        ) {
-                            status.text =
-                                "Stream பிழை: ${error.errorCodeName}"
-
-                            playButton.text = "▶  PLAY RADIO"
-                        }
-                    })
-
-                    player = exo
-                }
+            val p = getPlayer()
 
             if (p.isPlaying) {
                 p.pause()
                 status.text = "Radio நிறுத்தப்பட்டுள்ளது."
                 playButton.text = "▶  PLAY RADIO"
             } else {
-                p.setMediaItem(
-                    MediaItem.fromUri(station.url)
-                )
+                p.setMediaItem(MediaItem.fromUri(station.url))
                 p.prepare()
                 p.play()
 
@@ -577,13 +507,102 @@ private fun playPhoneSong(uri: Uri) {
                 playButton.text = "Ⅱ  PAUSE RADIO"
             }
 
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             status.text = "Radio தொடங்க முடியவில்லை."
             playButton.text = "▶  PLAY RADIO"
         }
     }
 
-    private fun stopPlayback() {
+    private fun toggleSongPlayback(uri: Uri) {
+        try {
+            val p = getPlayer()
+
+            if (p.isPlaying) {
+                p.pause()
+                status.text = "பாடல் Pause செய்யப்பட்டது."
+                playButton.text = "▶  PLAY SONG"
+            } else {
+                if (p.mediaItemCount == 0) {
+                    p.setMediaItem(MediaItem.fromUri(uri))
+                    p.prepare()
+                }
+
+                p.play()
+                status.text = "பாடல் இயங்குகிறது."
+                playButton.text = "Ⅱ  PAUSE SONG"
+            }
+
+        } catch (_: Exception) {
+            status.text = "பாடலை இயக்க முடியவில்லை."
+        }
+    }
+
+    private fun getPlayer(): ExoPlayer {
+        val existing = player
+
+        if (existing != null) return existing
+
+        return ExoPlayer.Builder(this)
+            .build()
+            .also { exo ->
+
+                exo.addListener(object : Player.Listener {
+
+                    override fun onPlaybackStateChanged(
+                        playbackState: Int
+                    ) {
+                        if (currentSongUri != null) {
+                            status.text = when (playbackState) {
+                                Player.STATE_BUFFERING ->
+                                    "பாடல் ஏற்றப்படுகிறது…"
+
+                                Player.STATE_READY ->
+                                    if (exo.isPlaying) {
+                                        "பாடல் இயங்குகிறது."
+                                    } else {
+                                        "பாடல் தயாராக உள்ளது."
+                                    }
+
+                                Player.STATE_ENDED ->
+                                    "பாடல் முடிந்தது."
+
+                                else -> status.text
+                            }
+                        } else {
+                            status.text = when (playbackState) {
+                                Player.STATE_BUFFERING ->
+                                    "Radio இணைக்கிறது…"
+
+                                Player.STATE_READY ->
+                                    if (exo.isPlaying) {
+                                        "Live radio playing"
+                                    } else {
+                                        "Play செய்யத் தயாராக உள்ளது."
+                                    }
+
+                                Player.STATE_ENDED ->
+                                    "Stream முடிந்தது."
+
+                                else -> status.text
+                            }
+                        }
+                    }
+
+                    override fun onPlayerError(
+                        error: PlaybackException
+                    ) {
+                        status.text =
+                            "Playback பிழை: ${error.errorCodeName}"
+
+                        playButton.text = "▶  PLAY"
+                    }
+                })
+
+                player = exo
+            }
+    }
+
+    private fun stopCurrentPlayback() {
         player?.stop()
         player?.clearMediaItems()
         playButton.text = "▶  PLAY RADIO"
@@ -639,6 +658,8 @@ private fun playPhoneSong(uri: Uri) {
                 saveStations()
 
                 selectedStation = station
+                currentSongUri = null
+
                 buildUi()
 
                 currentName.text = station.name
@@ -685,6 +706,7 @@ private fun playPhoneSong(uri: Uri) {
                 }
 
                 selectedStation = station.copy(url = url)
+                currentSongUri = null
 
                 saveStations()
                 buildUi()
@@ -695,6 +717,32 @@ private fun playPhoneSong(uri: Uri) {
                 toast("சேமிக்கப்பட்டது! Play அழுத்தவும்.")
             }
             .show()
+    }
+
+    private fun getSongName(uri: Uri): String {
+        var name = "Phone Song"
+
+        val cursor = contentResolver.query(
+            uri,
+            arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+            null,
+            null,
+            null
+        )
+
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val index = it.getColumnIndex(
+                    android.provider.OpenableColumns.DISPLAY_NAME
+                )
+
+                if (index >= 0) {
+                    name = it.getString(index) ?: name
+                }
+            }
+        }
+
+        return name
     }
 
     private fun isValidUrl(url: String): Boolean {
