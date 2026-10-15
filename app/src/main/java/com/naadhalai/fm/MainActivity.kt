@@ -327,7 +327,7 @@ class MainActivity : ComponentActivity() {
         val labels = playlist.mapIndexed { i, s -> "${if (i == current) "▶ " else ""}${i + 1}. ${s.name}" }.toTypedArray()
         AlertDialog.Builder(this).setTitle("Playlist / Queue").setItems(labels) { _, which ->
             player?.seekTo(which, 0L); player?.play(); updatePlayer()
-        }.setNegativeButton("மூடு", null).show()
+        }.setNegativeButton("← பின்செல்", null).show()
     }
 
     private fun addRadioDialog(category: String) {
